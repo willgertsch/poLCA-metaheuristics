@@ -90,6 +90,7 @@ poLCA <-
           
           # fit model using EM
           probs <- probs.init <- probs.start # starting values, does this mean we always start in same place? => no, see if statement with lots of OR's
+          # error is initially set as false and stays false if nothing goes wrong
           while (error) { # error trap
             error <- FALSE
             b <- rep(0,S*(R-1)) # start regression parameters at 0
@@ -106,22 +107,32 @@ poLCA <-
               }
               probs.init <- probs
             }
+            # store probs in a vectorized format
             vp <- poLCA.vectorize(probs)
+            
+            # main EM loop
             iter <- 1
             llik <- matrix(NA,nrow=maxiter,ncol=1)
             llik[iter] <- -Inf
             dll <- Inf
             while ((iter <= maxiter) & (dll > tol) & (!error)) {
               iter <- iter+1
+              # calculate 
               rgivy <- poLCA.postClass.C(prior,vp,y)      # calculate posterior
               vp$vecprobs <- poLCA.probHat.C(rgivy,y,vp)  # update probs
+              
+              # LCA regression case
               if (S>1) {
                 dd <- poLCA.dLL2dBeta.C(rgivy,prior,x)
                 b <- b + ginv(-dd$hess) %*% dd$grad     # update betas
                 prior <- poLCA.updatePrior(b,x,R)       # update prior
-              } else {
+              } 
+              else { # regular LCA case
+                # update prior
                 prior <- matrix(colMeans(rgivy),nrow=N,ncol=R,byrow=TRUE)
               }
+              
+              # calculate log-likelihood given vp and y
               llik[iter] <- sum(log(rowSums(prior*poLCA.ylik.C(vp,y))) - log(.Machine$double.xmax))
               dll <- llik[iter]-llik[iter-1]
               if (is.na(dll)) {
@@ -130,6 +141,8 @@ poLCA <-
                 error <- TRUE
               }
             }
+            # END OF EM LOOP
+            # calculation of SE
             if (!error) { 
               if (calc.se) {
                 se <- poLCA.se(y,x,poLCA.unvectorize(vp),prior,rgivy)
@@ -141,7 +154,9 @@ poLCA <-
             }
             firstrun <- FALSE
           } # finish estimating model without triggering error
-          ret$attempts <- c(ret$attempts,llik[iter])
+          
+          ret$attempts <- c(ret$attempts,llik[iter]) # save objective value for each replication
+          # replace values if we get a better result
           if (llik[iter] > ret$llik) {
             ret$llik <- llik[iter]             # maximum value of the log-likelihood
             ret$probs.start <- probs.init      # starting values of class-conditional response probabilities
@@ -169,7 +184,10 @@ poLCA <-
           }
           if (nrep>1 & verbose) { cat("Model ",repl,": llik = ",llik[iter]," ... best llik = ",ret$llik,"\n",sep=""); flush.console() }
         } # end replication loop
-      }
+      } # end of R > 1 case
+      
+      # post processing
+      # information here is based on best model found
       names(ret$probs) <- colnames(y)
       if (calc.se) { names(ret$probs.se) <- colnames(y) }
       ret$npar <- (R*sum(K.j-1)) + (R-1)                  # number of degrees of freedom used by the model (number of estimated parameters)
