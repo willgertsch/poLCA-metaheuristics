@@ -1,4 +1,4 @@
-Package: poLCA
+Package: poLCA.metaheuristics
 Type: Package
 Title: Polytomous Variable Latent Class Analysis
 Version: 1.6.0
