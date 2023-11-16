@@ -192,7 +192,6 @@ poLCA <-
           ######################################################################
           # Metaheuristic algorithm
           ######################################################################
-          # lc2 = poLCA(f, carcinoma, nclass=2, meta_control = list(method = 'metaheuristic', swarm = 10, iter = 100, algorithm='PSO', seed=1234))
           else if (meta_control$method == 'metaheuristic') {
             
             if (S > 1) {
@@ -208,22 +207,39 @@ poLCA <-
             prior <- poLCA.updatePrior(b,x,R) # compute prior prob
             
             # define objective function
+            # vars is vectorized probabilities
             obj = function(vars) {
               
-              vp$vecprobs = vars
-              
-              # check constraints
-              # item probabilities add to greater than 1
-              unvecprobs = poLCA.unvectorize(vp)
+              # construct vp object and enforce row sum constraints
+              # sum of probabilities of each response within a class should be 1
+              # enforce by rescaling or dropping
+              probs = list()
+              start = 1
               for (j in 1:J) {
-                if (sum(rowSums(unvecprobs[[j]])) > K.j[j])
+                # loop through each outcome variable
+                end = start + R * K.j[j] - 1
+                probs[[j]] = matrix(vars[start:end], nrow = R, ncol = K.j[j]) # put in list of matrices
+                # kill if any row sums are 0
+                if (sum(rowSums(probs[[j]]) == 0) > 0)
                   return(-Inf)
+                probs[[j]] <- probs[[j]]/rowSums(probs[[j]])  # normalize rows
+                # if (sum(rowSums(probs[[j]]) > 1) > 0) {
+                #   return(-Inf)
+                # }
+                start = end + 1
               }
               
+              # create vectorized object
+              vp <- poLCA.vectorize(probs)
+              #print(vp$vecprobs)
               llik = sum(log(rowSums(prior*poLCA.ylik.C(vp,y))) - log(.Machine$double.xmax))
               
-              
-              return(llik)
+              # deal with any missing
+              # deal with missing
+              if (is.na(llik))
+                return(-Inf)
+              else
+                return(llik)
             }
             
             # generate initial values
@@ -246,7 +262,6 @@ poLCA <-
             control = list(numPopulation = swarm, maxIter = iter)
             
             # call optimizer
-            browser()
             result = metaheuristicOpt::metaOpt(
               obj,
               optimType = 'MAX',
@@ -256,10 +271,22 @@ poLCA <-
               control,
               seed = seed
             )
-            print('done')
+            
+            # convert back to vp object format
+            probs = list()
+            start = 1
+            for (j in 1:J) {
+              # loop through each outcome variable
+              end = start + R * K.j[j] - 1
+              probs[[j]] = matrix(result$result[start:end], nrow = R, ncol = K.j[j]) # put in list of matrices
+              probs[[j]] <- probs[[j]]/rowSums(probs[[j]]) 
+              start = end + 1
+            }
+            vp <- poLCA.vectorize(probs)
             
             # calculate prior, posterior, standard errors
-            vp$vecprobs = result$result
+            rgivy <- poLCA.postClass.C(prior,vp,y)      # calculate posterior
+            prior <- matrix(colMeans(rgivy),nrow=N,ncol=R,byrow=TRUE) # update prior
             se <- poLCA.se(y,x,poLCA.unvectorize(vp),prior,rgivy)
             
             # save to ret object
@@ -274,6 +301,7 @@ poLCA <-
               ret$posterior <- rgivy             # NxR matrix of posterior class membership probabilities
               ret$predclass <- apply(ret$posterior,1,which.max)   # Nx1 vector of predicted class memberships, by modal assignment
               ret$P <- colMeans(ret$posterior)   # estimated class population shares
+              ret$numiter <- maxiter-1              # number of iterations until reaching convergence, matters for printin
               ret$probs.start.ok <- probs.start.ok # if starting probs specified, logical indicating proper entry format
               if (S>1) {
                 b <- matrix(b,nrow=S)
