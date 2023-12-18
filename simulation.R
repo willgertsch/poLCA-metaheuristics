@@ -278,6 +278,7 @@ sim2_carcinoma = function(nsim, algorithms, iter, swarm, seed) {
   
   # set up results data structure
   results = expand.grid(iter, swarm, algorithms)
+  results = results[rep(seq_len(nrow(results)), each = nsim), ]
   results$loglikelihood = rep(NA, nrow(results))
   colnames(results) = c('iter', 'swarm', 'algorithm', 'loglikelihood')
   
@@ -309,6 +310,7 @@ sim2_cheating = function(nsim, algorithms, iter, swarm) {
   # set up results data structure
   results = expand.grid(iter, swarm, algorithms)
   results$loglikelihood = rep(NA, nrow(results))
+  results = results[rep(seq_len(nrow(results)), each = nsim), ]
   colnames(results) = c('iter', 'swarm', 'algorithm', 'loglikelihood')
   
   # iterate through algorithms, iter, swarm
@@ -335,6 +337,7 @@ sim2_election = function(nsim, algorithms, iter, swarm) {
   # set up results data structure
   results = expand.grid(iter, swarm, algorithms)
   results$loglikelihood = rep(NA, nrow(results))
+  results = results[rep(seq_len(nrow(results)), each = nsim), ]
   colnames(results) = c('iter', 'swarm', 'algorithm', 'loglikelihood')
   
   # iterate through algorithms, iter, swarm
@@ -360,6 +363,7 @@ sim2_gss82 = function(nsim, algorithms, iter, swarm) {
   # set up results data structure
   results = expand.grid(iter, swarm, algorithms)
   results$loglikelihood = rep(NA, nrow(results))
+  results = results[rep(seq_len(nrow(results)), each = nsim), ]
   colnames(results) = c('iter', 'swarm', 'algorithm', 'loglikelihood')
   
   # iterate through algorithms, iter, swarm
@@ -385,6 +389,7 @@ sim2_values = function(nsim, algorithms, iter, swarm) {
   # set up results data structure
   results = expand.grid(iter, swarm, algorithms)
   results$loglikelihood = rep(NA, nrow(results))
+  results = results[rep(seq_len(nrow(results)), each = nsim), ]
   colnames(results) = c('iter', 'swarm', 'algorithm', 'loglikelihood')
   
   # iterate through algorithms, iter, swarm
