@@ -312,7 +312,7 @@ sim2_carcinoma_results %>%
 # seems to suggest 500-750 iterations
 # 100 swarm size seems to be good => benefits of high diversity
 
-sim2_cheating = function(nsim, algorithms, iter, swarm) {
+sim2_cheating = function(nsim, algorithms, iter, swarm, seed) {
   # set up model
   f <- cbind(LIEEXAM,LIEPAPER,FRAUD,COPYEXAM)~1
   
@@ -342,7 +342,15 @@ sim2_cheating_results = sim2_cheating(10, algorithms, iter, swarm, 1234)
 sim2_cheating_results
 write.csv(sim2_cheating_results, 'sim2_cheating_results.csv')
 
-sim2_election = function(nsim, algorithms, iter, swarm) {
+sim2_cheating_results %>%
+  ggplot(aes(x = iter, y = loglikelihood, color = as.factor(swarm))) +
+  geom_point()+geom_smooth(se=F)+
+  facet_wrap(~algorithm)
+
+# fewer iterations needed:500 is done
+# dimishing returns after 50 swarm size
+
+sim2_election = function(nsim, algorithms, iter, swarm, seed) {
   # set up model
   f <- cbind(MORALG,CARESG,KNOWG,LEADG,DISHONG,INTELG,
              MORALB,CARESB,KNOWB,LEADB,DISHONB,INTELB)~1
@@ -363,11 +371,15 @@ sim2_election = function(nsim, algorithms, iter, swarm) {
       iter = results[i, 1],
       swarm = results[i, 2],
       seed = seed+i # starting places are the same across algorithms
-    ))$llik
+    ),verbose=F)$llik
   }
   
   return(results)
 }
+
+sim2_election_results = sim2_election(10, algorithms, iter, swarm, 1234)
+sim2_election_results
+write.csv(sim2_election_results, 'sim2_election_results.csv')
 
 sim2_gss82 = function(nsim, algorithms, iter, swarm) {
   # set up model
