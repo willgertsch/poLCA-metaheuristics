@@ -381,6 +381,14 @@ sim2_election_results = sim2_election(10, algorithms, iter, swarm, 1234)
 sim2_election_results
 write.csv(sim2_election_results, 'sim2_election_results.csv')
 
+sim2_election_results %>%
+  ggplot(aes(x = iter, y = loglikelihood, color = as.factor(swarm))) +
+  geom_point()+geom_smooth(se=F)+
+  facet_wrap(~algorithm)
+
+# for DE need lots of iterations, low swarm size worked best?
+# 
+
 sim2_gss82 = function(nsim, algorithms, iter, swarm) {
   # set up model
   f <- cbind(PURPOSE,ACCURACY,UNDERSTA,COOPERAT)~1
