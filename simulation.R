@@ -307,7 +307,8 @@ write.csv(sim2_carcinoma_results, 'sim2_carcinoma_results.csv')
 sim2_carcinoma_results %>%
   ggplot(aes(x = iter, y = loglikelihood, color = as.factor(swarm))) +
   geom_point()+geom_smooth(se=F)+
-  facet_wrap(~algorithm)
+  facet_wrap(~algorithm) +
+  labs(title = 'Carcinoma data')
 
 # seems to suggest 500-750 iterations
 # 100 swarm size seems to be good => benefits of high diversity
@@ -345,7 +346,8 @@ write.csv(sim2_cheating_results, 'sim2_cheating_results.csv')
 sim2_cheating_results %>%
   ggplot(aes(x = iter, y = loglikelihood, color = as.factor(swarm))) +
   geom_point()+geom_smooth(se=F)+
-  facet_wrap(~algorithm)
+  facet_wrap(~algorithm) +
+  labs(title = 'Cheating data')
 
 # fewer iterations needed:500 is done
 # dimishing returns after 50 swarm size
@@ -384,10 +386,10 @@ write.csv(sim2_election_results, 'sim2_election_results.csv')
 sim2_election_results %>%
   ggplot(aes(x = iter, y = loglikelihood, color = as.factor(swarm))) +
   geom_point()+geom_smooth(se=F)+
-  facet_wrap(~algorithm)
+  facet_wrap(~algorithm) +
+  labs(title = 'Election data')
 
 # for DE need lots of iterations, low swarm size worked best?
-# 
 
 sim2_gss82 = function(nsim, algorithms, iter, swarm) {
   # set up model
@@ -444,5 +446,6 @@ sim2_values = function(nsim, algorithms, iter, swarm) {
 
 # simulation 3:
 # compare top 3 metaheuristics, EM algorithm, hybrid EM with best metaheuristic
+
 
 
