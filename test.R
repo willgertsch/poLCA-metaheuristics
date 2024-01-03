@@ -44,12 +44,47 @@ lca = poLCA(f, carcinoma, nclass = 3, meta_control = list(
   method = 'metaheuristic',
   swarm = 100,
   iter = 1000,
-  algorithm = 'DE',
+  algorithm = 'PSO',
   seed = 1234
 ))
 
 lca$llik
 lc3$llik
 
-# election
-# models with covariates
+# local maxima example
+data('gss82')
+f <- cbind(PURPOSE, ACCURACY, UNDERSTA, COOPERAT) ~ 1
+gss.lc <- poLCA(f, gss82, nclass = 3, maxiter = 3000, nrep = 10, verbose = T)
+gss.lc.meta = poLCA(f, gss82, nclass = 3, maxiter = 3000, meta_control = list(
+  method = 'metaheuristic',
+  swarm = 100,
+  iter = 1000,
+  algorithm = 'DE',
+  seed = 1234
+))
+gss.lc$llik
+gss.lc.meta$llik
+
+
+# test hybrid
+data('carcinoma')
+f = cbind(A, B, C, D, E, F, G) ~ 1
+lca.hybrid = poLCA(f, carcinoma, nclass = 3, meta_control = list(
+  method = 'hybrid',
+  swarm = 100,
+  iter = 200,
+  algorithm = 'HS',
+  seed = 1234
+))
+lca.hybrid$llik
+
+# check
+lca.em = poLCA(f, carcinoma, nclass = 3, meta_control = list(
+  method = 'EM',
+  swarm = 100,
+  iter = 200,
+  algorithm = 'HS',
+  seed = 1234
+))
+
+lca.em$llik

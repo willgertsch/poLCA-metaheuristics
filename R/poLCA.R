@@ -324,7 +324,179 @@ poLCA <-
           # Hybrid
           ######################################################################
           else if (meta_control$method == 'hybrid') {
+            # run metaheuristic algorithm
+            if (S > 1) {
+              stop('not supported for LCA regression.')
+            }
             
+            swarm = meta_control$swarm
+            iter = meta_control$iter
+            algorithm = meta_control$algorithm
+            seed = meta_control$seed
+            
+            b <- rep(0,S*(R-1)) # start regression parameters at 0
+            prior <- poLCA.updatePrior(b,x,R) # compute prior prob
+            
+            # define objective function
+            # vars is vectorized probabilities
+            obj = function(vars) {
+              
+              # construct vp object and enforce row sum constraints
+              # sum of probabilities of each response within a class should be 1
+              # enforce by rescaling or dropping
+              probs = list()
+              start = 1
+              for (j in 1:J) {
+                # loop through each outcome variable
+                end = start + R * K.j[j] - 1
+                probs[[j]] = matrix(vars[start:end], nrow = R, ncol = K.j[j]) # put in list of matrices
+                # kill if any row sums are 0
+                if (sum(rowSums(probs[[j]]) == 0) > 0)
+                  return(-Inf)
+                probs[[j]] <- probs[[j]]/rowSums(probs[[j]])  # normalize rows
+                # if (sum(rowSums(probs[[j]]) > 1) > 0) {
+                #   return(-Inf)
+                # }
+                start = end + 1
+              }
+              
+              # create vectorized object
+              vp <- poLCA.vectorize(probs)
+              llik = sum(log(rowSums(prior*poLCA.ylik.C(vp,y))) - log(.Machine$double.xmax))
+              
+              # deal with any missing
+              # deal with missing
+              if (is.na(llik))
+                return(-Inf)
+              else
+                return(llik)
+            }
+            
+            # generate initial values
+            probs <- probs.init <- probs.start
+            if ((!probs.start.ok) | (is.null(probs.start)) | (!firstrun) | (repl>1)) { 
+              probs <- list()
+              for (j in 1:J) { 
+                probs[[j]] <- matrix(runif(R*K.j[j]),nrow=R,ncol=K.j[j])
+                probs[[j]] <- probs[[j]]/rowSums(probs[[j]]) 
+              }
+              probs.init <- probs
+            }
+            # store probs in a vectorized format
+            vp <- poLCA.vectorize(probs)
+            
+            # set up bounds
+            rangeVar = matrix(rep(c(0, 1), length(vp$vecprobs)), nrow = 2)
+            
+            # set algorithm options
+            control = list(numPopulation = swarm, maxIter = iter)
+            
+            # call optimizer
+            result = metaheuristicOpt::metaOpt(
+              obj,
+              optimType = 'MAX',
+              algorithm = algorithm,
+              numVar = length(vp$vecprobs),
+              rangeVar,
+              control,
+              seed = seed
+            )
+            
+            # convert back to vp object format
+            probs = list()
+            start = 1
+            for (j in 1:J) {
+              # loop through each outcome variable
+              end = start + R * K.j[j] - 1
+              probs[[j]] = matrix(result$result[start:end], nrow = R, ncol = K.j[j]) # put in list of matrices
+              probs[[j]] <- probs[[j]]/rowSums(probs[[j]]) 
+              start = end + 1
+            }
+            vp <- poLCA.vectorize(probs)
+            rgivy <- poLCA.postClass.C(prior,vp,y)      # calculate posterior
+            prior <- matrix(colMeans(rgivy),nrow=N,ncol=R,byrow=TRUE) # update prior
+            
+            # fit model using EM
+            # error is initially set as false and stays false if nothing goes wrong
+            while (error) { # error trap
+              error <- FALSE
+              b <- rep(0,S*(R-1)) # start regression parameters at 0
+              #prior <- poLCA.updatePrior(b,x,R) # compute prior prob
+              
+              
+              # main EM loop
+              iter <- 1
+              llik <- matrix(NA,nrow=maxiter,ncol=1)
+              llik[iter] <- -Inf
+              dll <- Inf
+              while ((iter <= maxiter) & (dll > tol) & (!error)) {
+                iter <- iter+1
+                # calculate 
+                rgivy <- poLCA.postClass.C(prior,vp,y)      # calculate posterior
+                vp$vecprobs <- poLCA.probHat.C(rgivy,y,vp)  # update probs
+                
+                # LCA regression case
+                if (S>1) {
+                  dd <- poLCA.dLL2dBeta.C(rgivy,prior,x)
+                  b <- b + ginv(-dd$hess) %*% dd$grad     # update betas
+                  prior <- poLCA.updatePrior(b,x,R)       # update prior
+                } 
+                else { # regular LCA case
+                  # update prior
+                  prior <- matrix(colMeans(rgivy),nrow=N,ncol=R,byrow=TRUE)
+                }
+                
+                # calculate log-likelihood given vp and y
+                llik[iter] <- sum(log(rowSums(prior*poLCA.ylik.C(vp,y))) - log(.Machine$double.xmax))
+                dll <- llik[iter]-llik[iter-1]
+                if (is.na(dll)) {
+                  error <- TRUE
+                } else if ((S>1) & (dll < -1e-7)) {
+                  error <- TRUE
+                }
+              }
+              # END OF EM LOOP
+              # calculation of SE
+              if (!error) { 
+                if (calc.se) {
+                  se <- poLCA.se(y,x,poLCA.unvectorize(vp),prior,rgivy)
+                } else {
+                  se <- list(probs=NA,P=NA,b=NA,var.b=NA)
+                }
+              } else {
+                eflag <- TRUE
+              }
+              firstrun <- FALSE
+            } # finish estimating model without triggering error
+            
+            ret$attempts <- c(ret$attempts,llik[iter]) # save objective value for each replication
+            # replace values if we get a better result
+            if (llik[iter] > ret$llik) {
+              ret$llik <- llik[iter]             # maximum value of the log-likelihood
+              ret$probs.start <- probs.init      # starting values of class-conditional response probabilities
+              ret$probs <- poLCA.unvectorize(vp) # estimated class-conditional response probabilities
+              ret$probs.se <- se$probs           # standard errors of class-conditional response probabilities
+              ret$P.se <- se$P                   # standard errors of class population shares
+              ret$posterior <- rgivy             # NxR matrix of posterior class membership probabilities
+              ret$predclass <- apply(ret$posterior,1,which.max)   # Nx1 vector of predicted class memberships, by modal assignment
+              ret$P <- colMeans(ret$posterior)   # estimated class population shares
+              ret$numiter <- iter-1              # number of iterations until reaching convergence
+              ret$probs.start.ok <- probs.start.ok # if starting probs specified, logical indicating proper entry format
+              if (S>1) {
+                b <- matrix(b,nrow=S)
+                rownames(b) <- colnames(x)
+                rownames(se$b) <- colnames(x)
+                ret$coeff <- b                 # coefficient estimates (when estimated)
+                ret$coeff.se <- se$b           # standard errors of coefficient estimates (when estimated)
+                ret$coeff.V <- se$var.b        # covariance matrix of coefficient estimates (when estimated)
+              } else {
+                ret$coeff <- NA
+                ret$coeff.se <- NA
+                ret$coeff.V <- NA
+              }
+              ret$eflag <- eflag                 # error flag, true if estimation algorithm ever needed to restart with new initial values
+            }
+            if (nrep>1 & verbose) { cat("Model ",repl,": llik = ",llik[iter]," ... best llik = ",ret$llik,"\n",sep=""); flush.console() }
           }
           else {
             stop('not a valid method')
