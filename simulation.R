@@ -391,7 +391,7 @@ sim2_election_results %>%
 
 # for DE need lots of iterations, low swarm size worked best?
 
-sim2_gss82 = function(nsim, algorithms, iter, swarm) {
+sim2_gss82 = function(nsim, algorithms, iter, swarm, seed) {
   # set up model
   f <- cbind(PURPOSE,ACCURACY,UNDERSTA,COOPERAT)~1
   
@@ -411,11 +411,21 @@ sim2_gss82 = function(nsim, algorithms, iter, swarm) {
       iter = results[i, 1],
       swarm = results[i, 2],
       seed = seed+i # starting places are the same across algorithms
-    ))$llik
+    ), verbose=F)$llik
   }
   
   return(results)
 }
+
+sim2_gss82_results = sim2_gss82(10, algorithms, iter, swarm, 1234)
+sim2_gss82_results
+write.csv(sim2_gss82_results, 'sim2_gss82_results.csv')
+
+sim2_gss82_results %>%
+  ggplot(aes(x = iter, y = loglikelihood, color = as.factor(swarm))) +
+  geom_point()+geom_smooth(se=F)+
+  facet_wrap(~algorithm) +
+  labs(title = 'GSS82 data')
 
 sim2_values = function(nsim, algorithms, iter, swarm) {
   # set up model
