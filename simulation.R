@@ -461,7 +461,7 @@ sim2_values_results %>%
   ggplot(aes(x = iter, y = loglikelihood, color = as.factor(swarm))) +
   geom_point()+geom_smooth(se=F)+
   facet_wrap(~algorithm) +
-  labs(title = 'GSS82 data')
+  labs(title = 'Values data')
 
 # simulation 3:
 # compare top 3 metaheuristics, EM algorithm, hybrid EM with best metaheuristic
