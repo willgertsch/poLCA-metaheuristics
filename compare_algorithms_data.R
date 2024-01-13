@@ -83,5 +83,47 @@ test_on_data = function(method, algorithm='DE', swarm=100, iter=100, seed=1234) 
 }
 
 # DE: swarm=100, iter=500, what is up with the election sim 2?
-test_on_data('EM', seed = 1132)
-test_on_data('metaheuristic', 'DE', 100, 500, 1132)
+# these numbers should be good in general
+results.em = test_on_data('EM', seed = 1132)
+
+results.de = test_on_data('metaheuristic', 'DE', 100, 500, 1132)
+results.hs = test_on_data('metaheuristic', 'HS', 100, 500, 1132)
+results.woa = test_on_data('metaheuristic', 'WOA', 100, 500, 1132)
+results.gwo = test_on_data('metaheuristic', 'GWO', 100, 500, 1132)
+
+results.de.em = test_on_data('hybrid', 'DE', 100, 500, 1132)
+results.hs.em = test_on_data('hybrid', 'HS', 100, 500, 1132)
+results.woa.em = test_on_data('hybrid', 'WOA', 100, 500, 1132)
+results.gwo.em = test_on_data('hybrid', 'GWO', 100, 500, 1132)
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+results = rbind(
+  results.em,
+  results.de,
+  results.woa,
+  results.gwo,
+  results.de.em,
+  results.hs.em,
+  results.woa.em,
+  results.gwo.em
+) %>%
+  as.data.frame()
+colnames(results) = c('carcinoma', 'cheating', 'election', 'gss82', 'values')
+results$algorithm = c('EM', 'DE', 'WOA', 'GWO', 'DE+EM', 'HS+EM', 'WOA+EM', 'GWO+EM')
+
+results %>%
+  pivot_longer(
+    cols = c('carcinoma', 'cheating', 'election', 'gss82', 'values'),
+    names_to = 'data',
+    values_to = 'log-likelihood'
+  ) %>%
+  filter(algorithm %in% c('DE+EM', 'HS+EM', 'WOA+EM', 'GWO+EM', 'EM')) %>%
+  ggplot(aes(x = algorithm, y = `log-likelihood`, color = algorithm)) +
+  geom_point() +
+  facet_wrap(~data, scales = 'free_y') +
+  theme(axis.text.x = element_text(angle=90))
+
+# plot shows that hybrid algorithms perform best
+# but EM does well and sometimes better than the hybrid
