@@ -104,6 +104,7 @@ results = rbind(
   results.de,
   results.woa,
   results.gwo,
+  results.hs.em,
   results.de.em,
   results.hs.em,
   results.woa.em,
@@ -111,7 +112,8 @@ results = rbind(
 ) %>%
   as.data.frame()
 colnames(results) = c('carcinoma', 'cheating', 'election', 'gss82', 'values')
-results$algorithm = c('EM', 'DE', 'WOA', 'GWO', 'DE+EM', 'HS+EM', 'WOA+EM', 'GWO+EM')
+results$algorithm = c('EM', 'DE', 'WOA', 'GWO', 'HS','DE+EM', 'HS+EM', 'WOA+EM', 'GWO+EM')
+write.csv(results, 'compare_on_data.csv')
 
 results %>%
   pivot_longer(
@@ -119,7 +121,7 @@ results %>%
     names_to = 'data',
     values_to = 'log-likelihood'
   ) %>%
-  filter(algorithm %in% c('DE+EM', 'HS+EM', 'WOA+EM', 'GWO+EM', 'EM')) %>%
+  filter(!(algorithm %in% c('DE', 'WOA', 'GWO', 'WOA+EM'))) %>%
   ggplot(aes(x = algorithm, y = `log-likelihood`, color = algorithm)) +
   geom_point() +
   facet_wrap(~data, scales = 'free_y') +

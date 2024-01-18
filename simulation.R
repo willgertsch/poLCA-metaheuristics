@@ -463,6 +463,7 @@ sim2_values_results %>%
   facet_wrap(~algorithm) +
   labs(title = 'Values data')
 
+
 # simulation 3:
 # compare top 3 metaheuristics, EM algorithm, hybrid EM with best metaheuristic
 
