@@ -37,7 +37,7 @@ sample_sizes = seq(50, 2000, by = 50)
 #data_manifest_vars = c(7, 5, 17, 4, 4)
 num_vars = seq(4, 20)
 #data_classes = c(4, 2, 3, 4, 3)
-classes = c(1, 2, 3, 4)
+classes = c(2, 3, 4)
 
 Nsim = 1
 length(sample_sizes)*length(num_vars)*length(classes)*Nsim
